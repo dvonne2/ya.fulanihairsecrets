@@ -20,7 +20,7 @@ function getSheets() {
   return google.sheets({ version: 'v4', auth });
 }
 
-const SHEET_RANGE = 'Orders!A:O';
+const SHEET_RANGE = `'YA Orders'!A:O`;
 
 // In-memory idempotency cache for the lifetime of this serverless container.
 // It prevents the same checkout attempt from being written twice if the
