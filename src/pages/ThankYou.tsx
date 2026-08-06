@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, Package, Truck, Phone, CreditCard, Crown, Download, Play, Target, MessageCircle, Mail, PhoneCall, Share2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { fireThankYouEvents, resetTracking } from '@/utils/metaTracking';
+import { resetTracking } from '@/utils/metaTracking';
 import { fireTikTokPurchase } from '@/utils/tiktokTracking';
 import { WHATSAPP_ORDER_HELP_LINK, WHATSAPP_LINK, PHONE_DISPLAY, PHONE_TEL } from '@/config/api';
 
@@ -221,19 +221,7 @@ const ThankYou = () => {
         console.log('[TikTok] useEffect triggered - orderData:', !!orderData, 'orderNumber:', orderNumber, 'purchaseFired.current:', purchaseFired.current);
         if (isTestMode) {
           resetTracking();
-          eventsOk = await fireThankYouEvents({
-            orderId: resolvedOrderId,
-            email: 'test@fulanihairsecrets.com',
-            phone: '08012345678',
-            fullName: 'Test User',
-            totalAmount: 71750,
-            packageAmount: 66750,
-            paymentType: 'PBD',
-            packageName: 'Self Love Plus',
-            state: 'Lagos',
-            lga: 'Eti-Osa',
-            numItems: 3,
-          });
+          // Meta Purchase is handled server-side in /api/order
 
           // Fire TikTok test events
           console.log('[TikTok] Test mode - purchaseFired.current:', purchaseFired.current);
@@ -256,19 +244,7 @@ const ThankYou = () => {
           return;
         }
         // Fire Meta events
-        eventsOk = await fireThankYouEvents({
-          orderId: resolvedOrderId,
-          email: orderData?.email,
-          phone: orderData?.phone,
-          fullName: orderData?.fullName,
-          totalAmount: orderData?.totalAmount,
-          packageAmount: orderData?.packageAmount || orderData?.totalAmount,
-          paymentType: orderData?.paymentType || 'PBD',
-          packageName: orderData?.packageName || 'Fulani Hair Gro',
-          state: orderData?.state,
-          lga: orderData?.lga,
-          numItems: orderData?.numItems || 1,
-        });
+        // Meta Purchase is handled server-side in /api/order
 
         // Fire TikTok Purchase event
         console.log('[TikTok] Regular mode - purchaseFired.current:', purchaseFired.current);

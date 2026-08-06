@@ -1,6 +1,7 @@
 import { google } from 'googleapis';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { randomBytes } from 'crypto';
+import { sendMetaPurchase } from './metaPurchase';
 
 function generateServerOrderId(): string {
   const ts = Date.now().toString(36).toUpperCase();
@@ -97,6 +98,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (first !== undefined) recentOrderIds.delete(first);
       }
     }
+    sendMetaPurchase(req, body, orderId, Number(body.amount)).catch((err: any) => console.error('[Meta CAPI]', err));
     return res.status(200).json({ ok: true, orderId });
   } catch (e: any) {
     const cause = e.cause ? ` (${e.cause.message || e.cause})` : '';

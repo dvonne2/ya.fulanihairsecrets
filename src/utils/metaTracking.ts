@@ -798,6 +798,7 @@ export async function fireViewContent(data: {
     currency: 'NGN',
     content_type: 'product',
     content_name: data.packageName,
+    content_category: 'Hair Care',
   }, eventId);
   const userData = await buildUserData({
     email: data.email,
