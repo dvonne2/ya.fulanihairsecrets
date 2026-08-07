@@ -176,6 +176,21 @@ function getFbp(): string | null {
   return getPersistedFbp();
 }
 
+function getRawFbclidFromUrl(): string | null {
+  const search = window.location.search;
+  const start = search.indexOf('fbclid=');
+  if (start === -1) return null;
+  const from = start + 7;
+  const end = search.indexOf('&', from);
+  const raw = end === -1 ? search.slice(from) : search.slice(from, end);
+  if (!raw) return null;
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
+}
+
 function getFbc(): string | null {
   const cookieFbc = getCookie('_fbc');
   if (cookieFbc) return cookieFbc;
@@ -183,8 +198,7 @@ function getFbc(): string | null {
   // so the creation timestamp and exact formatting are preserved.
   const persisted = getPersistedFbc();
   if (persisted) return persisted;
-  const params = new URLSearchParams(window.location.search);
-  const fbclid = params.get('fbclid');
+  const fbclid = getRawFbclidFromUrl();
   if (fbclid) return `fb.1.${Date.now()}.${fbclid}`;
   return null;
 }
@@ -216,8 +230,7 @@ function getPersistedFbcData(): { fbc: string; fbclid: string; timestamp: number
 
 export function captureFbclid(): void {
   try {
-    const params = new URLSearchParams(window.location.search);
-    const urlFbclid = params.get('fbclid');
+    const urlFbclid = getRawFbclidFromUrl();
     const cookieFbc = getCookie('_fbc');
 
     // Use an existing fbc that matches the current URL fbclid to preserve the
