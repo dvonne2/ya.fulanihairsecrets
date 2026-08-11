@@ -625,34 +625,9 @@ export async function fireThankYouEvents(order: OrderData): Promise<boolean> {
 
   console.log('[Meta] Firing thank-you events for order:', order.orderId);
 
-  // Detect test mode from URL
-  const isTestMode = typeof window !== 'undefined' && window.location.search.includes('test=1');
-  const testEventCode = isTestMode ? 'TEST12345' : undefined;
-
-  // Get attribution data from localStorage
-  const mediaBuyer = typeof localStorage !== 'undefined' ? localStorage.getItem('mb') || '' : '';
-  const source = typeof localStorage !== 'undefined' ? localStorage.getItem('src') || '' : '';
-
   const nameParts = (order.fullName || '').trim().split(' ');
   const firstName = nameParts[0] || '';
   const lastName = nameParts.slice(1).join(' ') || '';
-  const userData = await buildUserData({
-    email: order.email,
-    phone: order.phone,
-    firstName,
-    lastName,
-    state: order.state,
-    city: order.lga,
-    gender: 'f',
-  });
-  const amount = Number(order.totalAmount) || 0;
-  const pkgAmount = Number(order.packageAmount) || amount;
-  // 1. PURCHASE — Fire only via CAPI to avoid fbevents NGN/value warnings
-  const purchaseEventId = await makeEventId('Purchase', order.orderId);
-
-  // Derive package SKU from package name (simple mapping)
-  const packageSku = order.packageName?.replace(/\s+/g, '_').toUpperCase() || 'FULANI_HAIR_GRO';
-  const contentIds = [packageSku];
 
   // Re-initialize the browser pixel with Advanced Matching so it can still
   // contribute to identity and matching, even though we are not firing the
@@ -667,27 +642,11 @@ export async function fireThankYouEvents(order: OrderData): Promise<boolean> {
     gender: 'f',
   });
 
-  // Fire Purchase via CAPI only. The browser fbq build currently loaded does
-  // not accept NGN as a valid Purchase currency, and CAPI already carries the
-  // correct value/currency for Meta attribution.
-  const capiFired = await fireCAPIEvent('Purchase', purchaseEventId, userData, {
-    value: amount > 0 ? amount : undefined,  // Full amount payable (product + delivery)
-    currency: amount > 0 ? 'NGN' : undefined,
-    content_ids: contentIds,
-    content_name: order.packageName || 'Fulani Hair Gro',
-    content_type: 'product',
-    contents: [{
-      id: packageSku,
-      quantity: order.numItems || 1,
-      item_price: pkgAmount,
-    }],
-    num_items: order.numItems || 1,
-    media_buyer: mediaBuyer,
-    source: source,
-  }, testEventCode);
-
-  console.log('[Meta] Thank-you events complete (CAPI Purchase only)');
-  return capiFired;
+  // Purchase is intentionally sent server-side only from /api/order, and only
+  // after the Google Sheets write succeeds. Do not add a browser or CAPI
+  // Purchase here.
+  console.log('[Meta] Thank-you events complete (no client-side Purchase)');
+  return true;
 }
 
 let leadSyncFired = false;
