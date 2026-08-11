@@ -12,21 +12,13 @@ function generateServerOrderId(): string {
 function getSheets() {
   const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
   const key = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-  console.log('[Sheets Debug] Email present:', !!email);
-  console.log('[Sheets Debug] Key present:', !!key);
-  console.log('[Sheets Debug] Key length:', key?.length);
   if (!email || !key) return null;
-  try {
-    const auth = new google.auth.JWT({
-      email,
-      key,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-    });
-    return google.sheets({ version: 'v4', auth });
-  } catch (e: any) {
-    console.error('[Sheets Debug] Auth creation error:', e.message);
-    return null;
-  }
+  const auth = new google.auth.JWT({
+    email,
+    key,
+    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+  });
+  return google.sheets({ version: 'v4', auth });
 }
 
 const SHEET_RANGE = `'YA Orders'!A:O`;
