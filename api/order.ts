@@ -98,8 +98,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (first !== undefined) recentOrderIds.delete(first);
       }
     }
-    sendMetaPurchase(req, body, orderId, Number(body.amount)).catch((err: any) => console.error('[Meta CAPI]', err));
-    return res.status(200).json({ ok: true, orderId });
+    // Sequence: Sheets confirmed -> await CAPI Purchase -> return ok:true -> Thank You.
+    // This is the ONLY Purchase sender. It is awaited so the serverless function
+    // cannot be frozen before Meta answers. A Meta failure is reported but never
+    // fails the order (the row is already written) and never triggers a retry or a
+    // second sender, so it can never produce a duplicate order or duplicate Purchase.
+    const meta = await sendMetaPurchase(req, body, orderId, Number(body.amount)).catch((err: any) => {
+      console.error('[Meta CAPI] Purchase threw:', err);
+      return { sent: false, event_id: orderId, error: String(err?.message || err) };
+    });
+    return res.status(200).json({ ok: true, orderId, meta });
   } catch (e: any) {
     const cause = e.cause ? ` (${e.cause.message || e.cause})` : '';
     const msg = String(e.message || 'unknown error') + cause;

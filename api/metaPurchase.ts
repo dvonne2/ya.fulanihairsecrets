@@ -58,13 +58,25 @@ function extractMetaName(fullName: string): { firstName: string; lastName: strin
   return { firstName: parts[0] || '', lastName: parts.slice(1).join(' ') || '' };
 }
 
-export async function sendMetaPurchase(req: VercelRequest, body: Record<string, any>, orderId: string, totalAmount: number): Promise<void> {
+export interface MetaPurchaseResult {
+  sent: boolean;
+  status?: number;
+  events_received?: number;
+  fbtrace_id?: string;
+  messages?: any[];
+  event_id?: string;
+  value?: number;
+  currency?: string;
+  error?: string;
+}
+
+export async function sendMetaPurchase(req: VercelRequest, body: Record<string, any>, orderId: string, totalAmount: number): Promise<MetaPurchaseResult> {
   const FB_PIXEL_ID = process.env.FB_PIXEL_ID || process.env.META_PIXEL_ID || '';
   const FB_CAPI_ACCESS_TOKEN = process.env.FB_CAPI_ACCESS_TOKEN || process.env.META_ACCESS_TOKEN || '';
   const FB_CAPI_VERSION = process.env.FB_CAPI_VERSION || process.env.META_API_VERSION || 'v19.0';
   if (!FB_PIXEL_ID || !FB_CAPI_ACCESS_TOKEN) {
     console.warn('[Meta CAPI] Pixel ID or access token not configured; skipping server-side Purchase');
-    return;
+    return { sent: false, error: 'not_configured' };
   }
 
   const { firstName, lastName } = extractMetaName(String(body.name || ''));
@@ -125,9 +137,32 @@ export async function sendMetaPurchase(req: VercelRequest, body: Record<string, 
     body: JSON.stringify(payload),
   });
   const text = await res.text();
+  let parsed: any = null;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    parsed = null;
+  }
+
   if (!res.ok) {
     console.error('[Meta CAPI] Purchase failed:', res.status, text);
-    return;
+    return {
+      sent: false,
+      status: res.status,
+      event_id: orderId,
+      error: (parsed && parsed.error && parsed.error.message) || text.slice(0, 300),
+    };
   }
+
   console.log('[Meta CAPI] Purchase sent:', orderId, text.slice(0, 200));
+  return {
+    sent: true,
+    status: res.status,
+    events_received: parsed ? parsed.events_received : undefined,
+    fbtrace_id: parsed ? parsed.fbtrace_id : undefined,
+    messages: parsed ? parsed.messages : undefined,
+    event_id: orderId,
+    value: totalAmount,
+    currency: 'NGN',
+  };
 }

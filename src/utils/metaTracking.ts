@@ -787,9 +787,43 @@ export async function fireViewContent(data: {
   });
 }
 
-export async function fireInitiateCheckout(data: {
+/**
+ * Deterministic InitiateCheckout event_id for one checkout attempt, so the
+ * browser event fired on first form interaction and the later CAPI event share
+ * the same id and Meta deduplicates them into a single InitiateCheckout.
+ */
+export async function getInitiateCheckoutEventId(attemptId: string): Promise<string> {
+  return makeEventId('InitiateCheckout', attemptId || Date.now().toString());
+}
+
+/**
+ * Browser-pixel InitiateCheckout. Fired on the customer's first genuine
+ * interaction with the order form, before any contact details exist.
+ * Browser InitiateCheckout only carries content data; value/currency go
+ * through CAPI to avoid fbevents NGN validation issues.
+ */
+export async function fireInitiateCheckoutBrowser(data: {
+  packageName: string;
+  eventId: string;
+}): Promise<void> {
+  const mediaBuyer = typeof localStorage !== 'undefined' ? localStorage.getItem('mb') || '' : '';
+  const source = typeof localStorage !== 'undefined' ? localStorage.getItem('src') || '' : '';
+  await fireBrowserEvent('track', 'InitiateCheckout', {
+    content_type: 'product',
+    content_name: data.packageName,
+    media_buyer: mediaBuyer,
+    source: source,
+  }, data.eventId);
+}
+
+/**
+ * CAPI InitiateCheckout for the same checkout attempt. Reuses the browser
+ * event_id so this never becomes a second InitiateCheckout.
+ */
+export async function fireInitiateCheckoutCAPI(data: {
   packageName: string;
   amount: number;
+  eventId: string;
   email?: string;
   phone?: string;
   firstName?: string;
@@ -797,23 +831,12 @@ export async function fireInitiateCheckout(data: {
   state?: string;
   city?: string;
 }): Promise<void> {
-  // Get attribution data from localStorage
   const mediaBuyer = typeof localStorage !== 'undefined' ? localStorage.getItem('mb') || '' : '';
   const source = typeof localStorage !== 'undefined' ? localStorage.getItem('src') || '' : '';
+  const eventId = data.eventId;
 
-  // Unique event ID per form start so a new checkout attempt is never blocked
-  // by a stale dedup from a previous session.
-  const eventId = await makeEventId('InitiateCheckout', Date.now().toString());
-  // Browser InitiateCheckout only carries content data; value/currency go
-  // through CAPI to avoid fbevents NGN validation issues.
-  await fireBrowserEvent('track', 'InitiateCheckout', {
-    content_type: 'product',
-    content_name: data.packageName,
-    media_buyer: mediaBuyer,
-    source: source,
-  }, eventId);
-  // Fire the CAPI event and re-init as soon as we have at least one piece of
-  // contact info, so Meta gets email/phone immediately.
+  // Only send once we have at least one piece of contact info, so Meta gets
+  // usable email/phone for matching.
   if (!data.email && !data.phone) return;
 
   await reinitPixelWithUserData({

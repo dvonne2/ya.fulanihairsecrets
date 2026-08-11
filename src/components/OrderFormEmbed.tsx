@@ -1,6 +1,6 @@
 import { PACKAGES } from '@/config/packages';
 import { useState, useEffect, useCallback, useMemo, useRef, CSSProperties, memo } from 'react';
-import { fireLeadSync, fireFormStart, fireInitiateCheckout, fireCartRecovery, markEventsAsFired, reinitPixelWithUserData } from '@/utils/metaTracking';
+import { fireLeadSync, fireFormStart, fireInitiateCheckoutBrowser, fireInitiateCheckoutCAPI, getInitiateCheckoutEventId, fireCartRecovery, markEventsAsFired, reinitPixelWithUserData } from '@/utils/metaTracking';
 import { getCheckoutAttemptId, clearCheckoutAttemptId } from '@/utils/orderId';
 import { fireTikTokLeadSync, fireTikTokInitiateCheckout } from '@/utils/tiktokTracking';
 import { PHONE_DISPLAY } from '@/config/api';
@@ -197,34 +197,80 @@ function OrderFormEmbed() {
       .catch(() => {});
   }, []);
 
-  const initiateCheckoutRef = useRef<{ fired: boolean; inFlight: boolean; promise: Promise<void> | null }>({
-    fired: false,
+  // One InitiateCheckout per checkout attempt. The browser event fires on the
+  // customer's first genuine interaction with the form; the CAPI event is sent
+  // later on the SAME event_id once contact details exist, so Meta dedupes them
+  // into a single InitiateCheckout.
+  const initiateCheckoutRef = useRef<{
+    eventId: string | null;
+    browserFired: boolean;
+    capiFired: boolean;
+    inFlight: boolean;
+    promise: Promise<void> | null;
+  }>({
+    eventId: null,
+    browserFired: false,
+    capiFired: false,
     inFlight: false,
     promise: null,
   });
+
+  const resolveCheckoutPackage = () => {
+    const selectedPackage = form.package
+      ? PACKAGES.find(p => p.slug === form.package || p.name === form.package || p.id === form.package)
+      : null;
+    return selectedPackage || PACKAGES.find(p => p.isPopular) || PACKAGES[0] || null;
+  };
+
+  const getCheckoutEventId = async (): Promise<string> => {
+    const ref = initiateCheckoutRef.current;
+    if (!ref.eventId) {
+      ref.eventId = await getInitiateCheckoutEventId(getCheckoutAttemptId());
+    }
+    return ref.eventId;
+  };
+
+  // First genuine interaction with the order form (focus / typing / selecting).
+  const handleFormInteraction = useCallback(() => {
+    const ref = initiateCheckoutRef.current;
+    if (ref.browserFired) return;
+    ref.browserFired = true;
+
+    void (async () => {
+      try {
+        const pkg = resolveCheckoutPackage();
+        const eventId = await getCheckoutEventId();
+        await fireInitiateCheckoutBrowser({
+          packageName: pkg?.name || 'Fulani Hair Gro',
+          eventId,
+        });
+      } catch {
+        // Allow a later interaction to retry. The persisted event_id dedup in
+        // fireBrowserEvent still guarantees the event can never be counted twice.
+        ref.browserFired = false;
+      }
+    })();
+  }, [form.package]);
 
   const handleInitiateCheckout = async (): Promise<void> => {
     const ref = initiateCheckoutRef.current;
 
     // Already done — nothing to wait for
-    if (ref.fired) return;
+    if (ref.capiFired) return;
 
     // A call is already running; await that same promise so the redirect waits for it
     if (ref.inFlight && ref.promise) return ref.promise;
 
     ref.inFlight = true;
 
-    const selectedPackage = form.package
-      ? PACKAGES.find(p => p.slug === form.package || p.name === form.package || p.id === form.package)
-      : null;
-    const pkg = selectedPackage || PACKAGES.find(p => p.isPopular) || PACKAGES[0];
+    const pkg = resolveCheckoutPackage();
     if (!pkg) {
       ref.inFlight = false;
       return;
     }
 
-    // Fire InitiateCheckout as soon as we have an email or a phone number
-    // (main or WhatsApp) so Meta gets contact data immediately.
+    // Send the CAPI half as soon as we have an email or a phone number
+    // (main or WhatsApp) so Meta gets contact data for matching.
     const email = form.email.trim().toLowerCase();
     const phone = isValidPhone(form.phone) ? form.phone : isValidPhone(form.whatsapp) ? form.whatsapp : '';
     if (!isValidEmail(email) && !phone) {
@@ -233,24 +279,28 @@ function OrderFormEmbed() {
     }
 
     // Lock before any await so no second handleInitiateCheckout can run concurrently
-    ref.fired = true;
+    ref.capiFired = true;
     const nameParts = form.name.trim().split(/\s+/);
-    ref.promise = fireInitiateCheckout({
-      packageName: pkg.name,
-      amount: pkg.price + pkg.deliveryFee,
-      email: isValidEmail(email) ? email : undefined,
-      phone: phone || undefined,
-      firstName: nameParts[0],
-      lastName: nameParts.slice(1).join(' '),
-      state: form.state || undefined,
-      city: extractCityFromAddress(form.state, form.address, nigeriaLgasRef.current),
-    });
+    ref.promise = (async () => {
+      const eventId = await getCheckoutEventId();
+      await fireInitiateCheckoutCAPI({
+        packageName: pkg.name,
+        amount: pkg.price + pkg.deliveryFee,
+        eventId,
+        email: isValidEmail(email) ? email : undefined,
+        phone: phone || undefined,
+        firstName: nameParts[0],
+        lastName: nameParts.slice(1).join(' '),
+        state: form.state || undefined,
+        city: extractCityFromAddress(form.state, form.address, nigeriaLgasRef.current),
+      });
+    })();
 
     try {
       await ref.promise;
     } catch {
       // Reset the fired flag only on error so a later valid attempt can retry
-      ref.fired = false;
+      ref.capiFired = false;
     } finally {
       ref.inFlight = false;
       ref.promise = null;
@@ -502,7 +552,13 @@ function OrderFormEmbed() {
 
 
   return (
-    <div id="order-form" style={{ padding: '20px', maxWidth: '600px', margin: '0 auto', fontFamily: 'Arial, sans-serif', position: 'relative' }}>
+    <div
+      id="order-form"
+      onFocusCapture={handleFormInteraction}
+      onInputCapture={handleFormInteraction}
+      onChangeCapture={handleFormInteraction}
+      style={{ padding: '20px', maxWidth: '600px', margin: '0 auto', fontFamily: 'Arial, sans-serif', position: 'relative' }}
+    >
       {/* Close Button */}
       <button 
         onClick={(e) => {

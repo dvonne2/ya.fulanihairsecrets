@@ -131,14 +131,25 @@ const Index = () => {
     return () => clearInterval(timer);
   }, [afterHero]);
 
-  // Meta Pixel: PageView and ViewContent on mount
+  // Meta Pixel: ViewContent on the first meaningful scroll.
+  // PageView is handled by analytics-deferred.js on landing.
+  // Landing => ViewContent 0. First meaningful scroll => ViewContent 1.
+  // Further scrolling keeps it at 1 (listener detaches and the ref latches).
   useEffect(() => {
     if (hasTrackedPageView.current) return;
-    // PageView is handled by analytics-deferred.js
-    setTimeout(() => {
+    const meaningfulScrollPx = Math.max(300, Math.round(window.innerHeight * 0.25));
+
+    const onScroll = () => {
+      if (hasTrackedPageView.current) return;
+      const scrolled = window.scrollY || window.pageYOffset || 0;
+      if (scrolled < meaningfulScrollPx) return;
+      hasTrackedPageView.current = true;
+      window.removeEventListener('scroll', onScroll);
       fireViewContent({ packageName: 'Fulani Hair Gro' });
-    }, 1000); // Fire after 1 second
-    hasTrackedPageView.current = true;
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
   // Viewer count fluctuation (social proof)
