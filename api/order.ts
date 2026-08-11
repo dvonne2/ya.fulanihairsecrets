@@ -1,7 +1,7 @@
 import { google } from 'googleapis';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { randomBytes } from 'crypto';
-import { sendMetaPurchase } from './metaPurchase';
+import { sendMetaPurchase } from './metaPurchase.js';
 
 function generateServerOrderId(): string {
   const ts = Date.now().toString(36).toUpperCase();
