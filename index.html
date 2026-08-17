@@ -174,10 +174,6 @@
       @media(min-width:1024px){.lg\:text-6xl{font-size:3.75rem}}
     </style>
 
-    <link rel="preconnect" href="https://connect.facebook.net" crossorigin>
-    <link rel="dns-prefetch" href="https://connect.facebook.net">
-    <link rel="preconnect" href="https://graph.facebook.com" crossorigin>
-    <link rel="dns-prefetch" href="https://graph.facebook.com">
     <link rel="preconnect" href="https://k6-e4e4123be8e54363900a90353991ca93.ecs.us-west-1.on.aws" crossorigin>
     <link rel="dns-prefetch" href="https://k6-e4e4123be8e54363900a90353991ca93.ecs.us-west-1.on.aws">
     <link rel="preconnect" href="https://analytics.tiktok.com" crossorigin>
@@ -191,18 +187,6 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-
-    <!-- Facebook Pixel Stub - queues events before analytics-deferred.js loads -->
-    <script>
-      !function(f,b,e,v,n,t,s)
-      {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-      n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-      if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-      n.queue=[];t=b.createElement(e);t.async=!0;
-      t.src=v;s=b.getElementsByTagName(e)[0];
-      s.parentNode.insertBefore(t,s)}(window, document,'script',
-      'https://connect.facebook.net/en_US/fbevents.js');
-    </script>
 
     <!-- TikTok Pixel Stub - queues events before analytics-deferred.js loads -->
     <script>
