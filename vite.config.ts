@@ -15,8 +15,6 @@ const copyCriticalFiles = () => ({
       'favicon.ico',
       'robots.txt',
       'analytics-deferred.js',
-      'proxy/facebook.php',
-      'meta-capi.php'
     ];
 
     criticalFiles.forEach(file => {

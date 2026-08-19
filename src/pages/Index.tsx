@@ -1,7 +1,6 @@
 import { useState, useEffect, lazy, Suspense, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { useAfterHeroLoad, useIdleLoad } from '@/hooks/useIdleLoad';
-import { fireViewContent } from '@/utils/metaTracking';
 import { UrgencyBanner } from '@/components/landing/UrgencyBanner';
 import { TopStoryBanner } from '@/components/landing/TopStoryBanner';
 import { StickyElements } from '@/components/landing/StickyElements';
@@ -105,7 +104,6 @@ const Index = () => {
   const afterHero = useAfterHeroLoad();
 
   // const { trackPageView, trackViewContent, trackFormStart } = useMetaPixel(); // Tracking removed
-  const hasTrackedPageView = useRef(false);
   
   // State management
   const [stockCount, setStockCount] = useState(43);
@@ -131,26 +129,6 @@ const Index = () => {
     return () => clearInterval(timer);
   }, [afterHero]);
 
-  // Meta Pixel: ViewContent on the first meaningful scroll.
-  // PageView is handled by analytics-deferred.js on landing.
-  // Landing => ViewContent 0. First meaningful scroll => ViewContent 1.
-  // Further scrolling keeps it at 1 (listener detaches and the ref latches).
-  useEffect(() => {
-    if (hasTrackedPageView.current) return;
-    const meaningfulScrollPx = Math.max(300, Math.round(window.innerHeight * 0.25));
-
-    const onScroll = () => {
-      if (hasTrackedPageView.current) return;
-      const scrolled = window.scrollY || window.pageYOffset || 0;
-      if (scrolled < meaningfulScrollPx) return;
-      hasTrackedPageView.current = true;
-      window.removeEventListener('scroll', onScroll);
-      fireViewContent({ packageName: 'Fulani Hair Gro' });
-    };
-
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
 
   // Viewer count fluctuation (social proof)
   useEffect(() => {
@@ -267,47 +245,6 @@ const Index = () => {
 
 
 
-  // FormStart tracking - fires once per session on first CTA click ONLY (not on form interactions)
-  // This prevents FormStart from firing on Step 2
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    type WindowWithTracking = Window & {
-      fbq?: (...args: unknown[]) => unknown;
-    };
-
-    const fireFormStart = () => {
-      try {
-        if (window.sessionStorage.getItem('formStartFired') === '1') return;
-        window.sessionStorage.setItem('formStartFired', '1');
-      } catch (error) {
-        console.error('sessionStorage unavailable (private browsing mode?):', {
-          error: error instanceof Error ? error.message : error
-        });
-        return; // Don't fire if sessionStorage is unavailable
-      }
-
-      // dataLayer removed - Google Analytics not used
-      // trackFormStart(); // Tracking removed
-    };
-
-    const handleClick = (event: MouseEvent) => {
-      const target = event.target as HTMLElement | null;
-      if (!target) return;
-
-      // Only fire FormStart on CTA buttons, NOT on form container clicks
-      const cta = target.closest('[data-form-cta="true"]');
-
-      if (cta) {
-        fireFormStart();
-      }
-    };
-
-    document.addEventListener('click', handleClick);
-    return () => {
-      document.removeEventListener('click', handleClick);
-    };
-  }, []);
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
