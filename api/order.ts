@@ -35,6 +35,7 @@ if (configured) {
     pixelId: pixelId as string,
     accessToken: accessToken as string,
     apiVersion: apiVersion as string,
+    testEventCode: process.env.META_TEST_EVENT_CODE,
     allowedOrigins: ['https://ya.fulanihairsecrets.com'],
     allowedSourceHosts: ['ya.fulanihairsecrets.com'],
   });
