@@ -2,6 +2,7 @@ import { PACKAGES } from '@/config/packages';
 import { useState, useEffect, useCallback, useMemo, useRef, CSSProperties, memo } from 'react';
 import { getCheckoutAttemptId, clearCheckoutAttemptId } from '@/utils/orderId';
 import { fireTikTokLeadSync, fireTikTokInitiateCheckout } from '@/utils/tiktokTracking';
+import { getMetaBrowser } from '@/utils/metaBrowser';
 import { PHONE_DISPLAY } from '@/config/api';
 import { BundleCard, BundlePackage } from "./BundleDropdown";
 
@@ -196,6 +197,27 @@ function OrderFormEmbed() {
       .catch(() => {});
   }, []);
 
+  // Meta: update checkout tracking as the customer types.
+  useEffect(() => {
+    const pkg = PACKAGES.find(p => p.slug === form.package || p.name === form.package || p.id === form.package);
+    const packageAmount = pkg?.price || 0;
+    const deliveryFee = form.deliveryType === 'same_day' ? 5000 : 3000;
+    const total = packageAmount + deliveryFee;
+    void getMetaBrowser()?.updateCheckout({
+      name: form.name,
+      phone: form.phone || form.whatsapp,
+      email: form.email,
+      state: form.state,
+      city: extractCityFromAddress(form.state, form.address, nigeriaLgasRef.current),
+      contentName: pkg?.name,
+      contentIds: pkg ? [pkg.slug || pkg.id || pkg.name] : undefined,
+      contentType: 'product',
+      value: total,
+      currency: 'NGN',
+      numItems: pkg?.quantity || 1,
+    });
+  }, [form.name, form.phone, form.whatsapp, form.email, form.state, form.address, form.package, form.deliveryType]);
+
 
   // Delivery date constraints must be computed on the client only
   // to avoid hydration mismatches between server and browser time.
@@ -351,6 +373,7 @@ function OrderFormEmbed() {
         paymentMethod: 'Pay on Delivery',
         utm_source: localStorage.getItem('src') || '',
         click_id: '',
+        externalId: getMetaBrowser()?.getTrackingContext().externalId || '',
         landing_page_url: window.location.href,
       };
 

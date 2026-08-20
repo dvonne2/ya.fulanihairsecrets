@@ -1,10 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import React, { Suspense } from "react";
+import React, { Suspense, useEffect } from "react";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import RequireAuth from "./components/RequireAuth";
 import Index from "./pages/Index";
+import { getMetaBrowser } from '@/utils/metaBrowser';
 
 // Valentine promo ended - components hidden
 // import { ValentineAnnouncement } from "@/components/ValentineAnnouncement";
@@ -28,6 +29,9 @@ const ReviewsAdmin = React.lazy(() => import("./pages/ReviewsAdmin"));
 const queryClient = new QueryClient();
 
 const App = () => {
+  useEffect(() => {
+    void getMetaBrowser()?.firePageView();
+  }, []);
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
