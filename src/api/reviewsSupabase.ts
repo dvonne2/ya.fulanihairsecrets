@@ -27,7 +27,7 @@ export const reviewsSupabaseBackend: ReviewsBackend = {
         if (upload.error) return { success: false, error: upload.error };
         photoUrl = upload.url;
       }
-      const { error } = await supabase.from(REVIEWS_TABLE).insert({
+      const { error } = await (supabase as any).from(REVIEWS_TABLE).insert({
         name: submission.name,
         location: submission.location || null,
         rating: Math.round(Number(submission.rating)),
@@ -59,7 +59,7 @@ export const reviewsSupabaseBackend: ReviewsBackend = {
 
   async getPendingReviews(adminPassword: string) {
     if (!supabase) return [];
-    const { data, error } = await supabase.rpc('get_all_reviews', {
+    const { data, error } = await (supabase as any).rpc('get_all_reviews', {
       admin_password: adminPassword,
     });
     if (error) {
@@ -71,7 +71,7 @@ export const reviewsSupabaseBackend: ReviewsBackend = {
 
   async updateReviewStatus(id: string, status: ReviewStatus, adminPassword: string) {
     if (!supabase) return { success: false, error: 'Supabase is not configured' };
-    const { error } = await supabase.rpc('update_review_status', {
+    const { error } = await (supabase as any).rpc('update_review_status', {
       review_id: id,
       new_status: status,
       admin_password: adminPassword,
@@ -86,7 +86,7 @@ export const reviewsSupabaseBackend: ReviewsBackend = {
     adminPassword: string
   ) {
     if (!supabase) return { success: false, error: 'Supabase is not configured' };
-    const { error } = await supabase.rpc('update_review_content', {
+    const { error } = await (supabase as any).rpc('update_review_content', {
       review_id: id,
       new_name: fields.name,
       new_location: fields.location || '',
@@ -101,7 +101,7 @@ export const reviewsSupabaseBackend: ReviewsBackend = {
 
   async deleteReview(id: string, adminPassword: string) {
     if (!supabase) return { success: false, error: 'Supabase is not configured' };
-    const { error } = await supabase.rpc('delete_review', {
+    const { error } = await (supabase as any).rpc('delete_review', {
       review_id: id,
       admin_password: adminPassword,
     });
@@ -121,7 +121,7 @@ export const reviewsSupabaseBackend: ReviewsBackend = {
       const fileExt = file.name.split('.').pop() || 'jpg';
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
       const filePath = `public/${fileName}`;
-      const { error: uploadError } = await supabase.storage
+      const { error: uploadError } = await (supabase as any).storage
         .from(STORAGE_BUCKET)
         .upload(filePath, file);
       if (uploadError) return { url: null, error: uploadError.message };

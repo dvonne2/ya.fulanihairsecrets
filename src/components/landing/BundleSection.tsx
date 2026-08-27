@@ -11,11 +11,11 @@ import result6 from '@/assets-optimized/results/result-6.webp';
 import result7 from '@/assets-optimized/results/result-7.webp';
 import { OptimizedImage } from '@/components/OptimizedImage';
 import { usePrefetch } from '@/hooks/usePrefetch';
+import { useEffect, useRef } from 'react';
 
 export const BundleSection = () => {
   const thankYouPrefetch = usePrefetch(() => import('@/pages/ThankYou'));
   const sectionRef = useRef<HTMLElement>(null);
-
 
   const results = [
     { image: result1, caption: "Length retention goals" },
@@ -28,7 +28,7 @@ export const BundleSection = () => {
   ];
 
   return (
-    <section className="py-16 md:py-24 bg-background relative overflow-hidden">
+    <section ref={sectionRef} className="py-16 md:py-24 bg-background relative overflow-hidden">
       {/* Ambient glow effects */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-gold/5 pointer-events-none" />
       <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent" />
@@ -198,7 +198,7 @@ export const BundleSection = () => {
           
           <div className="flex items-center justify-center gap-4 mb-6">
             <span className="text-muted-foreground/80 line-through text-lg">₦214,500</span>
-            <span className="font-cinzel text-4xl md:text-5xl text-gold animate-shimmer">₦66,750</span>
+            <span className="font-cinzel text-4xl md:text-5xl text-gold animate-shimmer">₦55,950</span>
             <span className="px-3 py-1 bg-[#B80F66]/20 text-[#B80F66] text-sm font-bold rounded-full">SAVE ₦147,750</span>
           </div>
           
@@ -223,7 +223,7 @@ export const BundleSection = () => {
               <span className="text-[#B80F66]">✓</span> 365-Day Guarantee
             </span>
             <span className="flex items-center gap-2">
-              <span className="text-[#B80F66]">✓</span> Free Shipping on ₦66,750 &amp; ₦215,000 bundles (pay before delivery orders only)
+              <span className="text-[#B80F66]">✓</span> Free Shipping on ₦55,950 &amp; ₦180,800 bundles (pay before delivery orders only)
             </span>
           </div>
         </div>

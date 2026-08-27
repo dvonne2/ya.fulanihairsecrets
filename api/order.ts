@@ -1,8 +1,8 @@
 import { google } from 'googleapis';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { randomBytes } from 'crypto';
-import { createMetaCapi } from 'vitalvida-meta-tracking/server';
-import { splitName, normalizePhone } from 'vitalvida-meta-tracking';
+import { metaCapi } from './lib/metaCapi.js';
+
 function generateServerOrderId(): string {
   const ts = Date.now().toString(36).toUpperCase();
   const rnd = randomBytes(4).toString('hex').toUpperCase();
@@ -21,30 +21,50 @@ function getSheets() {
   return google.sheets({ version: 'v4', auth });
 }
 
-const SHEET_RANGE = `'YA Orders'!A:O`;
+const SHEET_TAB = process.env.SHEET_TAB_NAME || 'YA Orders';
+const SHEET_RANGE = `${SHEET_TAB}!A:O`;
 
-const pixelId = process.env.META_PIXEL_ID;
-const accessToken = process.env.META_ACCESS_TOKEN;
-const apiVersion = process.env.META_API_VERSION;
+async function sendMetaPurchase(
+  orderId: string,
+  body: Record<string, any>,
+  headers: VercelRequest['headers']
+): Promise<void> {
+  if (!metaCapi) return;
+  const customData: Record<string, any> = {
+    value: Number(body.amount),
+    currency: 'NGN',
+    order_id: orderId,
+    content_name: body.package,
+    content_type: 'product',
+  };
+  if (body.sku) customData.content_ids = [String(body.sku)];
+  if (typeof body.quantity === 'number') customData.num_items = body.quantity;
 
-const configured = Boolean(pixelId && accessToken && apiVersion);
+  const payload = {
+    event_name: 'Purchase' as const,
+    event_id: orderId,
+    event_time: Math.floor(Date.now() / 1000),
+    action_source: 'website' as const,
+    event_source_url: typeof body.landing_page_url === 'string' ? body.landing_page_url : '',
+    user_data: {
+      external_id: String(body.metaExternalId || ''),
+      name: body.name,
+      phone: body.phone,
+      email: body.email || '',
+      state: body.state,
+      city: body.city || '',
+      country: 'ng',
+      fbp: body.fbp || undefined,
+      fbc: body.fbc || undefined,
+    },
+    custom_data: customData,
+  };
 
-let capi: ReturnType<typeof createMetaCapi> | null = null;
-if (configured) {
-  capi = createMetaCapi({
-    pixelId: pixelId as string,
-    accessToken: accessToken as string,
-    apiVersion: apiVersion as string,
-    testEventCode: process.env.META_TEST_EVENT_CODE,
-    allowedOrigins: ['https://ya.fulanihairsecrets.com'],
-    allowedSourceHosts: ['ya.fulanihairsecrets.com'],
-  });
-}
-
-function getCookieValue(cookieHeader: string | undefined, name: string): string | undefined {
-  if (!cookieHeader) return undefined;
-  const match = cookieHeader.match(new RegExp('(?:^|; )' + name.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') + '=([^;]+)'));
-  return match ? decodeURIComponent(match[1]) : undefined;
+  try {
+    await metaCapi.sendPurchase({ body: payload, headers });
+  } catch (err) {
+    console.error('[Meta Purchase] failed:', err);
+  }
 }
 
 // In-memory idempotency cache for the lifetime of this serverless container.
@@ -90,8 +110,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ ok: false, error: 'SHEET_ID not set' });
   }
 
+  let appendedRow = '';
   try {
-    await sheets.spreadsheets.values.append({
+    const appendRes = await sheets.spreadsheets.values.append({
       spreadsheetId,
       range: SHEET_RANGE,
       valueInputOption: 'USER_ENTERED',
@@ -115,6 +136,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ]],
       },
     });
+    appendedRow = appendRes.data.updates?.updatedRange || '';
     if (checkoutAttemptId) {
       recentOrderIds.set(checkoutAttemptId, orderId);
       if (recentOrderIds.size > MAX_RECENT_CACHE) {
@@ -122,48 +144,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (first !== undefined) recentOrderIds.delete(first);
       }
     }
-    const { firstName, surname } = splitName(body.name) || { firstName: body.name.trim().toLowerCase() };
-    const referer = Array.isArray(req.headers.referer) ? req.headers.referer[0] : req.headers.referer;
-    const purchasePayload = {
-      event_name: 'Purchase' as const,
-      event_id: orderId,
-      event_time: Math.floor(Date.now() / 1000),
-      action_source: 'website',
-      event_source_url: referer || 'https://ya.fulanihairsecrets.com/',
-      user_data: {
-        external_id: body.externalId || orderId,
-        phone: normalizePhone(body.phone) || body.phone,
-        name: body.name.trim().toLowerCase(),
-        first_name: firstName,
-        surname,
-        email: body.email ? body.email.trim().toLowerCase() : undefined,
-        state: body.state,
-        city: body.lga || undefined,
-        country: 'ng',
-        fbp: getCookieValue(req.headers.cookie, '_fbp'),
-        fbc: getCookieValue(req.headers.cookie, '_fbc'),
-      },
-      custom_data: {
-        value: Number(body.amount),
-        currency: 'NGN',
-        order_id: orderId,
-        num_items: Number(body.quantity) || 1,
-        content_ids: [body.package],
-      },
-    };
 
-    const purchaseResult = capi
-      ? await capi.sendPurchase({
-          body: purchasePayload,
-          headers: req.headers,
-          remoteAddress: req.socket?.remoteAddress,
-        }).catch((err: any) => {
-          console.error('[Meta] Purchase CAPI error:', err?.message || err);
-          return { ok: false, eventName: 'Purchase', eventId: orderId, messages: [String(err?.message || err)] };
-        })
-      : { ok: false, eventName: 'Purchase', eventId: orderId, reason: 'Meta CAPI not configured' };
+    // Fire server-side Meta Purchase only after the order is recorded in Sheets.
+    await sendMetaPurchase(orderId, body, req.headers);
 
-    return res.status(200).json({ ok: true, orderId, meta: purchaseResult });
+    return res.status(200).json({
+      ok: true,
+      orderId,
+    });
   } catch (e: any) {
     const cause = e.cause ? ` (${e.cause.message || e.cause})` : '';
     const msg = String(e.message || 'unknown error') + cause;

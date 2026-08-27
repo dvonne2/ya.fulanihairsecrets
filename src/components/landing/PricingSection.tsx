@@ -70,7 +70,7 @@ export const PricingSection = ({ countdown, stockCount, commitmentChecks, onComm
   const originalBundles = [
     {
       name: "SELF 💕 PLUS",
-      price: "₦32,750",
+      price: "₦27,450",
       promo: "",
       savings: "",
       contents: "1 Shampoo, 1 Pomade, 1 Conditioner",
@@ -79,7 +79,7 @@ export const PricingSection = ({ countdown, stockCount, commitmentChecks, onComm
     },
     {
       name: "SELF 💕 RETURN",
-      price: "₦42,750",
+      price: "₦39,900",
       promo: "",
       savings: "",
       contents: "3× Pomade",
@@ -88,7 +88,7 @@ export const PricingSection = ({ countdown, stockCount, commitmentChecks, onComm
     },
     {
       name: "SELF 💕 B2GOF",
-      price: "₦52,750",
+      price: "₦39,900",
       promo: "",
       savings: "",
       contents: "2× Shampoo, 2× Pomade, 2× Conditioner",
@@ -97,7 +97,7 @@ export const PricingSection = ({ countdown, stockCount, commitmentChecks, onComm
     },
     {
       name: "SELF 💕 PLUS B2GOF",
-      price: "₦66,750",
+      price: "₦55,950",
       promo: "",
       savings: "",
       contents: "2× Shampoo | 2× Pomade | 2× Conditioner",
@@ -106,7 +106,7 @@ export const PricingSection = ({ countdown, stockCount, commitmentChecks, onComm
     },
     {
       name: "Family Saves",
-      price: "₦215,000",
+      price: "₦180,800",
       promo: "",
       savings: "",
       contents: "6+4 of each product",
@@ -170,10 +170,10 @@ export const PricingSection = ({ countdown, stockCount, commitmentChecks, onComm
               <a 
                 href="#order-form"
                 data-form-cta="true"
-                className={`block w-full py-3 px-6 rounded-lg font-bold text-center transition-all ${
+                className={`block w-full py-3 px-6 rounded-lg font-bold text-center transition-transform ${
                   bundle.popular
                     ? 'bg-gradient-to-r from-[#5ec239] to-[#4cae4e] text-white hover:scale-105'
-                    : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
+                    : 'bg-gray-100 text-gray-900 hover:scale-[1.02]'
                 }`}
               >
                 {bundle.popular ? '🌟 Claim This Bundle' : 'Select Bundle'}
@@ -183,7 +183,7 @@ export const PricingSection = ({ countdown, stockCount, commitmentChecks, onComm
         </div>
         
         <p className="text-xl text-[#333333]">
-          ✓ 365-Day Guarantee &nbsp;•&nbsp; ✓ Free Shipping on ₦66,750 &amp; ₦215,000 bundles (pay before delivery orders only)
+          ✓ 365-Day Guarantee &nbsp;•&nbsp; ✓ Free Shipping on ₦55,950 &amp; ₦180,800 bundles (pay before delivery orders only)
         </p>
       </div>
     </section>

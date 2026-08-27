@@ -1,7 +1,11 @@
 {
-  "buildCommand": "npm run build",
+  "installCommand": "npm install --legacy-peer-deps",
+  "buildCommand": "npx vite build",
   "outputDirectory": "dist",
   "rewrites": [
+    { "source": "/api/method/(.*)", "destination": "https://vitalvida.systemforce.ng/api/method/$1" },
+    { "source": "/assets/:path*", "destination": "/assets/:path*" },
+    { "source": "/fonts/:path*", "destination": "/fonts/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
@@ -49,8 +53,8 @@
       "source": "/((?!assets/|fonts/|api/).*)",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" },
-        { "key": "Vercel-CDN-Cache-Control", "value": "public, s-maxage=60, stale-while-revalidate=86400" },
-        { "key": "CDN-Cache-Control", "value": "public, s-maxage=60, stale-while-revalidate=86400" }
+        { "key": "Vercel-CDN-Cache-Control", "value": "public, s-maxage=60" },
+        { "key": "CDN-Cache-Control", "value": "public, s-maxage=60" }
       ]
     }
   ]

@@ -2,8 +2,8 @@ import { PACKAGES } from '@/config/packages';
 import { useState, useEffect, useCallback, useMemo, useRef, CSSProperties, memo } from 'react';
 import { getCheckoutAttemptId, clearCheckoutAttemptId } from '@/utils/orderId';
 import { fireTikTokLeadSync, fireTikTokInitiateCheckout } from '@/utils/tiktokTracking';
-import { getMetaBrowser } from '@/utils/metaBrowser';
-import { PHONE_DISPLAY } from '@/config/api';
+import { meta } from '@/utils/metaTracking';
+import { PHONE_DISPLAY, WEBHOOK_URL } from '@/config/api';
 import { BundleCard, BundlePackage } from "./BundleDropdown";
 
 const BASE_PATH = import.meta.env.BASE_URL || '/';
@@ -62,7 +62,6 @@ const useDebounce = (value, delay) => {
 const packageMapping: Record<string, string> = {
   'PKG-001': 'Self Love Plus',
   'PKG-002': 'Self Love Return',
-  'PKG-003': 'Self Love B2GOF',
   'PKG-004': 'Self Love Plus B2GOF',
   'PKG-005': 'Family Saves'
 };
@@ -79,7 +78,6 @@ const resolvePkgId = (v: any): string => {
 const PACKAGE_CONTENTS: Record<string, string[]> = {
   'Self Love Plus': ['1 500ml Net Shampoo', '1 150ml Net Pomade', '1 500ml Net Conditioner'],
   'Self Love Return': ['3 x 150ml Net Pomade'],
-  'Self Love B2GOF': ['3 500ml Net Shampoo', '3 x 150ml Net Pomade'],
   'Self Love Plus B2GOF': ['3 500ml Net Shampoo', '3 x 150ml Net Pomade', '3 500ml Net Conditioner'],
   'Family Saves': ['10 500ml Net Shampoo', '10 150ml Net Pomade', '10 500ml Net Conditioner']
 };
@@ -183,6 +181,7 @@ function OrderFormEmbed() {
     address: '',
     state: '',
     package: '',
+    quantity: 1,
     deliveryDate: '',
     deliveryType: 'next_day'
   });
@@ -197,27 +196,27 @@ function OrderFormEmbed() {
       .catch(() => {});
   }, []);
 
-  // Meta: update checkout tracking as the customer types.
+  // Feed form state into the module's InitiateCheckout lifecycle.
+  // The module fires once name + valid Nigerian phone are present.
   useEffect(() => {
-    const pkg = PACKAGES.find(p => p.slug === form.package || p.name === form.package || p.id === form.package);
-    const packageAmount = pkg?.price || 0;
-    const deliveryFee = form.deliveryType === 'same_day' ? 5000 : 3000;
-    const total = packageAmount + deliveryFee;
-    void getMetaBrowser()?.updateCheckout({
+    const city = extractCityFromAddress(form.state, form.address, nigeriaLgasRef.current);
+    const pkg = form.package ? PACKAGES.find(p => p.slug === form.package) : undefined;
+    const deliveryFee = 0;
+    const value = pkg ? pkg.price * (form.quantity || 1) + deliveryFee : undefined;
+    meta.updateCheckout({
       name: form.name,
-      phone: form.phone || form.whatsapp,
+      phone: form.phone,
       email: form.email,
       state: form.state,
-      city: extractCityFromAddress(form.state, form.address, nigeriaLgasRef.current),
+      city,
       contentName: pkg?.name,
-      contentIds: pkg ? [pkg.slug || pkg.id || pkg.name] : undefined,
+      contentIds: pkg ? [pkg.sku || pkg.id] : undefined,
       contentType: 'product',
-      value: total,
+      value,
       currency: 'NGN',
-      numItems: pkg?.quantity || 1,
-    });
-  }, [form.name, form.phone, form.whatsapp, form.email, form.state, form.address, form.package, form.deliveryType]);
-
+      numItems: pkg ? (pkg.quantity || 1) * (form.quantity || 1) : undefined,
+    }).catch(() => {});
+  }, [form.name, form.phone, form.email, form.state, form.address, form.package, form.quantity, form.deliveryType]);
 
   // Delivery date constraints must be computed on the client only
   // to avoid hydration mismatches between server and browser time.
@@ -333,7 +332,6 @@ function OrderFormEmbed() {
       return;
     }
 
-
     setSubmitting(true);
 
     try {
@@ -341,7 +339,7 @@ function OrderFormEmbed() {
       // immediate retry) so the backend can deduplicate accidental double-clicks.
       const checkoutAttemptId = getCheckoutAttemptId();
       const pkg = PACKAGES.find(p => p.slug === form.package);
-      const packagePrice = pkg?.price || 0;
+      const packagePrice = (pkg?.price || 0) * (form.quantity || 1);
 
       if (packagePrice === 0) {
         alert('Please select a package');
@@ -350,8 +348,12 @@ function OrderFormEmbed() {
         return;
       }
 
-      const currentDeliveryFee = form.deliveryType === 'same_day' ? 5000 : 3000;
-      const total = packagePrice + currentDeliveryFee;
+      const currentDeliveryFee = 0;
+      const total = packagePrice;
+
+      const city = extractCityFromAddress(form.state, form.address, nigeriaLgasRef.current);
+
+      const trackingContext = meta.getTrackingContext();
 
       const payload = {
         checkoutAttemptId,
@@ -365,23 +367,23 @@ function OrderFormEmbed() {
         amount: total,
         productAmount: packagePrice,
         deliveryFee: currentDeliveryFee,
-        quantity: pkg?.quantity || 1,
+        quantity: form.quantity || 1,
         sku: pkg?.sku || '',
         deliveryDate: form.deliveryDate || '',
-        lga: form.lga || '',
-        landmark: form.landmark || '',
+        city: city || undefined,
         paymentMethod: 'Pay on Delivery',
         utm_source: localStorage.getItem('src') || '',
         click_id: '',
-        externalId: getMetaBrowser()?.getTrackingContext().externalId || '',
         landing_page_url: window.location.href,
+        metaExternalId: trackingContext.externalId,
+        fbp: trackingContext.fbp ?? undefined,
+        fbc: trackingContext.fbc ?? undefined,
       };
 
       console.log('[OrderForm] Sending payload to /api/order:', payload);
 
       const response = await fetch('/api/order', {
         method: 'POST',
-        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
@@ -412,8 +414,7 @@ function OrderFormEmbed() {
           paymentType: 'PBD',
           packageName: payload.package,
           state: payload.state,
-          lga: payload.lga,
-          numItems: pkg?.quantity || 1,
+          numItems: (pkg?.quantity || 1) * (form.quantity || 1),
         }));
       } catch (e) {
         console.error('[OrderForm] Failed to persist order data:', e);
@@ -430,10 +431,7 @@ function OrderFormEmbed() {
 
 
   return (
-    <div
-      id="order-form"
-      style={{ padding: '20px', maxWidth: '600px', margin: '0 auto', fontFamily: 'Arial, sans-serif', position: 'relative' }}
-    >
+    <div id="order-form" style={{ padding: '20px', maxWidth: '600px', margin: '0 auto', fontFamily: 'Arial, sans-serif', position: 'relative' }}>
       {/* Close Button */}
       <button 
         onClick={(e) => {
@@ -464,10 +462,10 @@ function OrderFormEmbed() {
           zIndex: 1000 // Ensure it's above other elements
         }}
         onMouseOver={(e) => {
-          e.target.style.background = '#f5f5f5';
+          (e.target as HTMLElement).style.background = '#f5f5f5';
         }}
         onMouseOut={(e) => {
-          e.target.style.background = 'transparent';
+          (e.target as HTMLElement).style.background = 'transparent';
         }}
       >
         ×
@@ -669,6 +667,7 @@ function OrderFormEmbed() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {PACKAGES.map((pkg) => {
               const isSelected = form.package === pkg.slug;
+              const displayName = pkg.displayName || pkg.name;
               return (
                 <label
                   key={pkg.slug}
@@ -677,11 +676,14 @@ function OrderFormEmbed() {
                     alignItems: 'flex-start',
                     gap: '10px',
                     padding: '12px',
-                    border: `2px solid ${isSelected ? '#d82726' : '#ddd'}`,
+                    border: pkg.highlight
+                      ? '2px solid #2563eb'
+                      : `2px solid ${isSelected ? '#d82726' : '#ddd'}`,
                     borderRadius: '8px',
                     cursor: 'pointer',
-                    backgroundColor: isSelected ? '#f0f8ff' : '#fff',
+                    backgroundColor: pkg.highlight ? '#eaf0fd' : (isSelected ? '#f0f8ff' : '#fff'),
                     transition: 'all 0.2s ease',
+                    minWidth: 0,
                   }}
                 >
                   <input
@@ -690,34 +692,111 @@ function OrderFormEmbed() {
                     value={pkg.slug}
                     checked={isSelected}
                     onChange={e => setForm(prev => ({ ...prev, package: e.target.value }))}
-                    style={{ cursor: 'pointer', marginTop: '3px' }}
+                    style={{ cursor: 'pointer', marginTop: '3px', flexShrink: 0 }}
                   />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#111' }}>
-                        {pkg.name}
-                        {pkg.label && (
-                          <span style={{
-                            marginLeft: '8px',
-                            fontSize: '10px',
-                            fontWeight: '700',
-                            color: '#fff',
-                            backgroundColor: pkg.isPopular ? '#d82726' : '#059669',
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            textTransform: 'uppercase',
-                          }}>
-                            {pkg.label}
-                          </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {pkg.highlight ? (
+                      <div>
+                        {pkg.badges && pkg.badges.length > 0 && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+                            {pkg.badges.map(badge => (
+                              <span
+                                key={badge.text}
+                                style={{
+                                  fontSize: '11px',
+                                  fontWeight: 700,
+                                  padding: '3px 8px',
+                                  borderRadius: '999px',
+                                  whiteSpace: 'nowrap',
+                                  color: badge.tone === 'success' ? '#065f46' : badge.tone === 'accent' ? '#fff' : '#1d4ed8',
+                                  backgroundColor: badge.tone === 'success' ? '#bbf7d0' : badge.tone === 'accent' ? '#d82726' : '#dbe6fe',
+                                }}
+                              >
+                                {badge.text}
+                              </span>
+                            ))}
+                          </div>
                         )}
-                      </span>
-                      <span style={{ fontSize: '16px', fontWeight: '800', color: '#059669' }}>
-                        ₦{pkg.price.toLocaleString('en-NG')}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-                      {pkg.items} · + delivery fee (select below)
-                    </div>
+                        <div style={{ fontSize: '17px', fontWeight: 800, color: '#111', lineHeight: 1.3 }}>
+                          {displayName}
+                        </div>
+                        {pkg.offerBullets && pkg.offerBullets.length > 0 && (
+                          <ul style={{ margin: '8px 0 0', paddingLeft: '20px', listStyle: 'disc outside', color: '#374151', fontSize: '13px', lineHeight: 1.6 }}>
+                            {pkg.offerBullets.map(bullet => (
+                              <li key={bullet}>{bullet}</li>
+                            ))}
+                          </ul>
+                        )}
+                        {pkg.valueBreakdown && pkg.valueBreakdown.length > 0 && (
+                          <div style={{
+                            marginTop: '10px',
+                            padding: '10px 12px',
+                            backgroundColor: '#fff',
+                            borderRadius: '8px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '4px',
+                          }}>
+                            {pkg.valueBreakdown.map(row => (
+                              <div
+                                key={row.label}
+                                style={{
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'baseline',
+                                  gap: '10px',
+                                  fontSize: '13px',
+                                  color: '#111',
+                                  fontWeight: row.strong ? 700 : 400,
+                                }}
+                              >
+                                <span style={{ minWidth: 0 }}>{row.label}</span>
+                                <span style={{ whiteSpace: 'nowrap' }}>₦{row.amount.toLocaleString('en-NG')}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'baseline', flexWrap: 'wrap', gap: '8px', marginTop: '10px' }}>
+                          {pkg.referencePrice && (
+                            <span style={{ fontSize: '13px', color: '#9ca3af', textDecoration: 'line-through', whiteSpace: 'nowrap' }}>
+                              ₦{pkg.referencePrice.toLocaleString('en-NG')}
+                            </span>
+                          )}
+                          <span style={{ fontSize: '24px', fontWeight: 800, color: '#047857', whiteSpace: 'nowrap' }}>
+                            ₦{pkg.price.toLocaleString('en-NG')}
+                          </span>
+                        </div>
+                        {pkg.tagline && (
+                          <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                            {pkg.tagline}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: '15px', fontWeight: 700, color: '#111' }}>
+                            {displayName}
+                          </div>
+                          <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '4px' }}>
+                            {pkg.itemsLabel || pkg.items}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px', flexShrink: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontSize: '12px', color: '#9ca3af', textDecoration: 'line-through' }}>
+                              ₦{pkg.originalPrice.toLocaleString('en-NG')}
+                            </span>
+                            <span style={{ fontSize: '10px', fontWeight: 700, color: '#1d4ed8', backgroundColor: '#dbe6fe', padding: '2px 6px', borderRadius: '999px' }}>
+                              {pkg.discount}% OFF
+                            </span>
+                          </div>
+                          <span style={{ fontSize: '18px', fontWeight: 800, color: '#047857' }}>
+                            ₦{pkg.price.toLocaleString('en-NG')}
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </label>
               );
@@ -725,22 +804,42 @@ function OrderFormEmbed() {
           </div>
         </div>
 
+        {/* Quantity */}
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#333' }}>
+            Quantity
+          </label>
+          <select
+            style={{
+              width: '100%',
+              padding: '12px',
+              border: '1px solid #ddd',
+              borderRadius: '6px',
+              fontSize: '16px',
+              backgroundColor: '#fff'
+            }}
+            value={String(form.quantity || 1)}
+            onChange={e => setForm(prev => ({ ...prev, quantity: Number(e.target.value) }))}
+            aria-label="Select quantity"
+          >
+            {[1,2,3,4,5,6,7,8,9,10].map(n => (
+              <option key={n} value={String(n)}>{n}</option>
+            ))}
+          </select>
+        </div>
+
         {/* Delivery Fee Selection */}
         <div style={{ marginBottom: '30px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#333' }}>
-            Delivery Fee
-          </label>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <label style={{ flex: 1, padding: '12px', border: form.deliveryType === 'next_day' ? '2px solid #244beb' : '1px solid #ddd', borderRadius: '6px', cursor: 'pointer', backgroundColor: form.deliveryType === 'next_day' ? '#f0f4ff' : '#fff' }}>
-              <input type="radio" name="deliveryType" value="next_day" checked={form.deliveryType === 'next_day'} onChange={e => setForm(prev => ({ ...prev, deliveryType: e.target.value }))} style={{ marginRight: '8px' }} />
-              <span style={{ fontWeight: '600', color: '#333' }}>1–3 Days Delivery</span>
-              <span style={{ display: 'block', fontSize: '14px', color: '#666', marginTop: '4px' }}>₦3,000</span>
-            </label>
-            <label style={{ flex: 1, padding: '12px', border: form.deliveryType === 'same_day' ? '2px solid #244beb' : '1px solid #ddd', borderRadius: '6px', cursor: 'pointer', backgroundColor: form.deliveryType === 'same_day' ? '#f0f4ff' : '#fff' }}>
-              <input type="radio" name="deliveryType" value="same_day" checked={form.deliveryType === 'same_day'} onChange={e => setForm(prev => ({ ...prev, deliveryType: e.target.value }))} style={{ marginRight: '8px' }} />
-              <span style={{ fontWeight: '600', color: '#333' }}>24 Hours Delivery</span>
-              <span style={{ display: 'block', fontSize: '14px', color: '#666', marginTop: '4px' }}>₦5,000</span>
-            </label>
+          <div style={{
+            padding: '16px 20px',
+            borderRadius: '8px',
+            backgroundColor: '#fff5f5',
+            color: '#d82726',
+            fontSize: '16px',
+            fontWeight: 700,
+            textAlign: 'center',
+          }}>
+            FREE DELIVERY TODAY ONLY
           </div>
         </div>
 
@@ -768,8 +867,8 @@ function OrderFormEmbed() {
             value={form.deliveryDate}
             onChange={e => setForm(prev => ({ ...prev, deliveryDate: e.target.value }))}
             required
-            onFocus={e => e.target.showPicker?.()}
-            onClick={e => e.target.showPicker?.()}
+            onFocus={e => (e.target as HTMLInputElement).showPicker?.()}
+            onClick={e => (e.target as HTMLInputElement).showPicker?.()}
             min={deliveryDateMin}
             max={deliveryDateMax}
           />
@@ -782,14 +881,15 @@ function OrderFormEmbed() {
         <div style={S.sum}>
           {(() => {
             const pkg = PACKAGES.find(p => p.slug === form.package);
-            const currentDeliveryFee = form.deliveryType === 'same_day' ? 5000 : 3000;
-            const total = (pkg?.price || 0) + currentDeliveryFee;
+            const currentDeliveryFee = 0;
+            const packagePrice = (pkg?.price || 0) * (form.quantity || 1);
+            const total = packagePrice + currentDeliveryFee;
             return (
               <>
-                <div style={S.sr}><span>Product</span><span>{pkg?.name || '—'}</span></div>
-                <div style={S.sr}><span>Quantity</span><span>{pkg?.quantity || 1}</span></div>
-                <div style={S.sr}><span>Product amount</span><span>₦{(pkg?.price || 0).toLocaleString('en-NG')}</span></div>
-                <div style={S.sr}><span>Delivery fee</span><span>₦{currentDeliveryFee.toLocaleString('en-NG')}</span></div>
+                <div style={S.sr}><span>Product</span><span>{pkg?.displayName || pkg?.name || '—'}</span></div>
+                <div style={S.sr}><span>Quantity</span><span>{form.quantity || 1}</span></div>
+                <div style={S.sr}><span>Product amount</span><span>₦{packagePrice.toLocaleString('en-NG')}</span></div>
+                <div style={S.sr}><span>Delivery</span><span style={{ color: '#d82726', fontWeight: 700 }}>FREE</span></div>
                 <div style={S.tot}><span>Total payable</span><span>₦{total.toLocaleString('en-NG')}</span></div>
               </>
             );
@@ -821,6 +921,10 @@ function OrderFormEmbed() {
         >
           <span style={{ filter: 'brightness(0) invert(1)' }}>🛒</span> SUBMIT ORDER
         </button>
+
+        <div style={{ textAlign: 'center', marginTop: '14px', fontSize: '15px', fontWeight: 700, color: '#244beb' }}>
+          Free Delivery + Pay On Delivery
+        </div>
       </div>
     </div>
   );

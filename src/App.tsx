@@ -5,7 +5,7 @@ import { LoadingSpinner } from "@/components/LoadingSpinner";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import RequireAuth from "./components/RequireAuth";
 import Index from "./pages/Index";
-import { getMetaBrowser } from '@/utils/metaBrowser';
+import { meta } from "@/utils/metaTracking";
 
 // Valentine promo ended - components hidden
 // import { ValentineAnnouncement } from "@/components/ValentineAnnouncement";
@@ -30,8 +30,9 @@ const queryClient = new QueryClient();
 
 const App = () => {
   useEffect(() => {
-    void getMetaBrowser()?.firePageView();
+    meta.firePageView().catch((err) => console.error('[App] firePageView failed:', err));
   }, []);
+
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>

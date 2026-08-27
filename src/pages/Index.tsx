@@ -1,10 +1,12 @@
 import { useState, useEffect, lazy, Suspense, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { useAfterHeroLoad, useIdleLoad } from '@/hooks/useIdleLoad';
+import { StickyPayOnDeliveryBar } from '@/components/landing/StickyPayOnDeliveryBar';
 import { UrgencyBanner } from '@/components/landing/UrgencyBanner';
 import { TopStoryBanner } from '@/components/landing/TopStoryBanner';
 import { StickyElements } from '@/components/landing/StickyElements';
 import { TopIntentPopup } from '@/components/landing/TopIntentPopup';
+import { HairProblemsSection } from '@/components/landing/HairProblemsSection';
 import { Footer } from '@/components/landing/Footer';
 // Valentine promo ended
 // import { ValentineCountdown } from '@/components/ValentineCountdown';
@@ -103,8 +105,6 @@ const Index = () => {
   const loadNonCritical = useIdleLoad(500); // Load after 500ms idle
   const afterHero = useAfterHeroLoad();
 
-  // const { trackPageView, trackViewContent, trackFormStart } = useMetaPixel(); // Tracking removed
-  
   // State management
   const [stockCount, setStockCount] = useState(43);
   const [viewerCount, setViewerCount] = useState(427);
@@ -128,7 +128,6 @@ const Index = () => {
 
     return () => clearInterval(timer);
   }, [afterHero]);
-
 
   // Viewer count fluctuation (social proof)
   useEffect(() => {
@@ -245,9 +244,53 @@ const Index = () => {
 
 
 
+  // FormStart tracking - fires once per session on first CTA click ONLY (not on form interactions)
+  // This prevents FormStart from firing on Step 2
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    type WindowWithTracking = Window & {
+      fbq?: (...args: unknown[]) => unknown;
+    };
+
+    const fireFormStart = () => {
+      try {
+        if (window.sessionStorage.getItem('formStartFired') === '1') return;
+        window.sessionStorage.setItem('formStartFired', '1');
+      } catch (error) {
+        console.error('sessionStorage unavailable (private browsing mode?):', {
+          error: error instanceof Error ? error.message : error
+        });
+        return; // Don't fire if sessionStorage is unavailable
+      }
+
+      // dataLayer removed - Google Analytics not used
+      // trackFormStart(); // Tracking removed
+    };
+
+    const handleClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+
+      // Only fire FormStart on CTA buttons, NOT on form container clicks
+      const cta = target.closest('[data-form-cta="true"]');
+
+      if (cta) {
+        fireFormStart();
+      }
+    };
+
+    document.addEventListener('click', handleClick);
+    return () => {
+      document.removeEventListener('click', handleClick);
+    };
+  }, []);
 
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
+    <>
+      <StickyPayOnDeliveryBar />
+      <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
+      
       {/* Footer sticky bar temporarily hidden */}
       {false && mounted && afterHero && (
         <StickyElements 
@@ -265,6 +308,8 @@ const Index = () => {
       <main>
         <TopStoryBanner />
 
+        <HairProblemsSection />
+
         
         
         
@@ -281,8 +326,8 @@ const Index = () => {
         show={showTopIntent}
         onClose={() => setShowTopIntent(false)}
       />
-
     </div>
+    </>
   );
 };
 

@@ -14,7 +14,7 @@ const copyCriticalFiles = () => ({
       '.htaccess',
       'favicon.ico',
       'robots.txt',
-      'analytics-deferred.js',
+      'analytics-deferred.js'
     ];
 
     criticalFiles.forEach(file => {

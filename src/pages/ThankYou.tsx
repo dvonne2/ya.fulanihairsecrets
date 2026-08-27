@@ -30,13 +30,6 @@ const packageProducts: Record<string, { title: string; items: { name: string; qt
       { name: "Growth Pomade (150g)", qty: 3, image: pomade },
     ]
   },
-  "Self Love B2GOF": {
-    title: "YOUR 3-MONTH SCALP RESET SUPPLY",
-    items: [
-      { name: "Heritage Shampoo (500ml)", qty: 2, image: shampoo },
-      { name: "Growth Pomade (150g)", qty: 2, image: pomade },
-    ]
-  },
   "Self Love Plus B2GOF": {
     title: "YOUR 3-MONTH RECOVERY SYSTEM SUPPLY",
     items: [
@@ -170,109 +163,35 @@ const ThankYou = () => {
     setLoading(false);
   }, []);
 
-  const metaEventsFired = useRef(false);
-
   useEffect(() => {
-    const run = async () => {
-      if (loading) return;
-      if (metaEventsFired.current) {
-        console.log('[Meta] Events already fired, skipping');
-        return;
-      }
-
+    const run = () => {
+      if (loading || purchaseFired.current) return;
       const isTestMode = window.location.search.includes('test=1');
-      const resolvedOrderId = isTestMode ? 'TEST_ORDER_123' : (orderData?.orderId || orderNumber);
-      const inFlightKey = resolvedOrderId ? `fhg_purchase_in_flight_${resolvedOrderId}` : '';
-      const completedKey = resolvedOrderId ? `fhg_purchase_completed_${resolvedOrderId}` : '';
-
-      console.log('[ThankYou] run() called', { resolvedOrderId, hasOrderData: !!orderData, hasEmail: !!orderData?.email, hasPhone: !!orderData?.phone });
-
-      if (!isTestMode && (!orderData?.email || !orderData?.phone)) {
-        console.warn('[Meta] No customer PII available, skipping Purchase to protect EMQ');
+      if (isTestMode) {
+        purchaseFired.current = true;
+        fireTikTokPurchase({
+          content_name: 'Self Love Plus',
+          value: 71750,
+          currency: 'NGN',
+          email: 'test@fulanihairsecrets.com',
+          phone: '08012345678',
+          orderId: 'TEST_ORDER_123',
+        });
+        console.log('[TikTok] Test Purchase event fired');
         return;
       }
-
-      if (resolvedOrderId && resolvedOrderId !== 'UNKNOWN') {
-        if (sessionStorage.getItem(completedKey)) {
-          console.log('[Meta] Events already fired for this order, skipping');
-          metaEventsFired.current = true;
-          return;
-        }
-        const inFlightAtRaw = sessionStorage.getItem(inFlightKey);
-        if (inFlightAtRaw) {
-          const inFlightAt = Number(inFlightAtRaw);
-          if (Number.isFinite(inFlightAt) && Date.now() - inFlightAt < 60_000) {
-            console.log('[Meta] Purchase already in flight, skipping');
-            return;
-          }
-          console.warn('[ThankYou] Stale inFlight key cleared for order:', resolvedOrderId);
-          sessionStorage.removeItem(inFlightKey);
-        }
-        sessionStorage.setItem(inFlightKey, Date.now().toString());
-      } else {
-        // No usable order ID; nothing to fire.
-        console.warn('[ThankYou] No usable order ID for Purchase');
-        return;
-      }
-
-      let eventsOk = false;
-      try {
-        console.log('[TikTok] useEffect triggered - orderData:', !!orderData, 'orderNumber:', orderNumber, 'purchaseFired.current:', purchaseFired.current);
-        if (isTestMode) {
-          // Meta Purchase is handled server-side in /api/order
-
-          // Fire TikTok test events
-          console.log('[TikTok] Test mode - purchaseFired.current:', purchaseFired.current);
-          if (!purchaseFired.current) {
-            purchaseFired.current = true;
-            console.log('[TikTok] Firing test Purchase event');
-            fireTikTokPurchase({
-              content_name: 'Self Love Plus',
-              value: 71750,
-              currency: 'NGN',
-              email: 'test@fulanihairsecrets.com',
-              phone: '08012345678',
-              orderId: resolvedOrderId,
-            });
-          } else {
-            console.log('[TikTok] Test mode - Purchase already fired, skipping');
-          }
-
-          console.log('[Events] TEST MODE - All events fired for both Meta and TikTok');
-          return;
-        }
-        // Fire Meta events
-        // Meta Purchase is handled server-side in /api/order
-
-        // Fire TikTok Purchase event
-        console.log('[TikTok] Regular mode - purchaseFired.current:', purchaseFired.current);
-        if (!purchaseFired.current) {
-          purchaseFired.current = true;
-          console.log('[TikTok] Firing regular Purchase event');
-          fireTikTokPurchase({
-            content_name: orderData?.packageName || 'Fulani Hair Gro',
-            value: orderData?.totalAmount || 0,
-            currency: 'NGN',
-            email: orderData?.email,
-            phone: orderData?.phone,
-            orderId: resolvedOrderId,
-          });
-        } else {
-          console.log('[TikTok] Regular mode - Purchase already fired, skipping');
-        }
-
-        console.log('[Events] Purchase fired for both Meta and TikTok');
-      } catch (err: any) {
-        console.error('[ThankYou] Purchase event firing error:', err?.message || err);
-      } finally {
-        if (eventsOk) {
-          sessionStorage.setItem(completedKey, '1');
-        }
-        sessionStorage.removeItem(inFlightKey);
-        metaEventsFired.current = eventsOk;
-      }
+      if (!orderData || !orderNumber) return;
+      purchaseFired.current = true;
+      fireTikTokPurchase({
+        content_name: orderData.packageName || 'Fulani Hair Gro',
+        value: orderData.totalAmount || 0,
+        currency: 'NGN',
+        email: orderData.email,
+        phone: orderData.phone,
+        orderId: orderData.orderId || orderNumber,
+      });
+      console.log('[TikTok] Purchase event fired');
     };
-
     void run();
   }, [loading, orderData, orderNumber]);
 

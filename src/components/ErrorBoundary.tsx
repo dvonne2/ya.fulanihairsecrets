@@ -1,4 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { reloadOnceForChunkError } from '@/utils/chunkReloadRecovery';
 
 interface Props {
   children: ReactNode;
@@ -21,6 +22,9 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    // Stale-deployment chunk failures get a single automatic reload
+    // (loop-guarded); all other errors render the fallback screen below.
+    if (reloadOnceForChunkError(error)) return;
     console.error('=== ERROR BOUNDARY CAUGHT ===');
     console.error('Error name:', error.name);
     console.error('Error message:', error.message);

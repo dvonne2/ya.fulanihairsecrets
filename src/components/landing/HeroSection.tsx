@@ -120,7 +120,7 @@ export const HeroSection = ({ countdown, stockCount, viewerCount }: HeroSectionP
               </p>
               <div className="flex items-center justify-center lg:justify-start gap-3">
                 <span className="font-sans text-xl text-muted-foreground line-through">₦71,500</span>
-                <span className="font-cinzel text-3xl md:text-4xl text-gold font-semibold">₦32,750</span>
+                <span className="font-cinzel text-3xl md:text-4xl text-gold font-semibold">₦27,450</span>
                 <span className="px-2 py-1 bg-destructive text-foreground text-sm font-bold rounded">-54%</span>
               </div>
             </div>
@@ -152,7 +152,7 @@ export const HeroSection = ({ countdown, stockCount, viewerCount }: HeroSectionP
             <a
               href="#order-form"
               data-form-cta="true"
-              className="block w-full bg-gradient-to-r from-[#5ec239] to-[#4cae4e] text-white font-sans text-base md:text-lg tracking-widest uppercase py-4 md:py-5 rounded-xl font-bold text-center mb-6 hover:transform hover:-translate-y-2 hover:shadow-lg transition-all duration-300 cta-with-arrow"
+              className="block w-full bg-gradient-to-r from-[#5ec239] to-[#4cae4e] text-white font-sans text-base md:text-lg tracking-widest uppercase py-4 md:py-5 rounded-xl font-bold text-center mb-6 shadow-lg hover:-translate-y-1 hover:scale-[1.02] transition-transform duration-300 cta-with-arrow"
             >
               Claim My Special Offer
               <span className="arrow-indicator"></span>
@@ -173,7 +173,7 @@ export const HeroSection = ({ countdown, stockCount, viewerCount }: HeroSectionP
                       height={300}
                       loading="eager"
                       decoding="async"
-                      fetchpriority="high"
+                      {...({ fetchpriority: "high" } as any)}
                     />
                   )}
 
@@ -214,7 +214,7 @@ export const HeroSection = ({ countdown, stockCount, viewerCount }: HeroSectionP
                       height={400}
                       loading="eager"
                       decoding="async"
-                      fetchpriority="high"
+                      {...({ fetchpriority: "high" } as any)}
                     />
                   )}
 

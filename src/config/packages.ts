@@ -1,3 +1,14 @@
+export interface PackageBadge {
+  text: string;
+  tone: 'accent' | 'success';
+}
+
+export interface PackageValueRow {
+  label: string;
+  amount: number;
+  strong?: boolean;
+}
+
 export interface Package {
   id: string;
   slug: string;
@@ -13,64 +24,28 @@ export interface Package {
   label: string;
   sku: string;
   quantity: number;
+
+  // Display-only copy. `name` stays the wire/fulfilment identifier (order payload
+  // `package` field and the ThankYou product map key), so customer-facing renames
+  // live here instead.
+  displayName?: string;
+  itemsLabel?: string;
+  offerBullets?: string[];
+  badges?: PackageBadge[];
+  referencePrice?: number;
+  valueBreakdown?: PackageValueRow[];
+  tagline?: string;
+  highlight?: boolean;
 }
 
 export const PACKAGES: Package[] = [
-  // Single-product entry offers (cheapest first)
-  {
-    id: 'PKG-006',
-    slug: 'shampoo_500ml',
-    name: 'Fulani Hair Gro Shampoo — 500 ml',
-    price: 14999,
-    originalPrice: 29999,
-    discount: 50,
-    items: '1 x 500ml Heritage Shampoo',
-    supply: 'Single Product',
-    freeItems: '',
-    isPopular: false,
-    deliveryFee: 3000,
-    label: 'Entry Offer',
-    sku: 'SHMP-500',
-    quantity: 1,
-  },
-  {
-    id: 'PKG-007',
-    slug: 'conditioner_500ml',
-    name: 'Fulani Hair Gro Conditioner — 500 ml',
-    price: 14999,
-    originalPrice: 29999,
-    discount: 50,
-    items: '1 x 500ml Voluminous Conditioner',
-    supply: 'Single Product',
-    freeItems: '',
-    isPopular: false,
-    deliveryFee: 3000,
-    label: '',
-    sku: 'COND-500',
-    quantity: 1,
-  },
-  {
-    id: 'PKG-008',
-    slug: 'pomade_150ml',
-    name: 'Fulani Hair Gro Pomade — 150 ml',
-    price: 17999,
-    originalPrice: 35999,
-    discount: 50,
-    items: '1 x 150ml Growth Pomade',
-    supply: 'Single Product',
-    freeItems: '',
-    isPopular: false,
-    deliveryFee: 3000,
-    label: 'Premium Treatment',
-    sku: 'POMD-150',
-    quantity: 1,
-  },
+  // Multi-item bundles only
   {
     id: 'PKG-001',
     slug: 'self_love_plus',
     name: 'Complete Hair Growth System',
-    price: 32750,
-    originalPrice: 65500,
+    price: 27450,
+    originalPrice: 54900,
     discount: 50,
     items: '1 x 500ml Heritage Shampoo + 1 x 150ml Growth Pomade + 1 x 500ml Voluminous Conditioner',
     supply: '1-Month Trial',
@@ -80,13 +55,15 @@ export const PACKAGES: Package[] = [
     label: '',
     sku: 'CHGS-001',
     quantity: 1,
+    displayName: 'Self Love Plus',
+    itemsLabel: '1 shampoo, 1 pomade, 1 conditioner',
   },
   {
     id: 'PKG-002',
     slug: 'self_love_return',
     name: 'Self Love Return',
-    price: 42750,
-    originalPrice: 85500,
+    price: 39900,
+    originalPrice: 79800,
     discount: 50,
     items: '3 x 150ml Growth Pomades',
     supply: '3-Month Maintenance',
@@ -96,28 +73,13 @@ export const PACKAGES: Package[] = [
     label: '',
     sku: 'SLR-002',
     quantity: 1,
-  },
-  {
-    id: 'PKG-003',
-    slug: 'self_love_b2gof',
-    name: 'Self Love B2GOF',
-    price: 52750,
-    originalPrice: 105500,
-    discount: 50,
-    items: '3 x 500ml Heritage Shampoos + 3 x 150ml Growth Pomades',
-    supply: '3-Month Scalp Reset',
-    freeItems: 'Buy 2 shampoos and 2 pomades, get 1 of each free',
-    isPopular: false,
-    deliveryFee: 3000,
-    label: '',
-    sku: 'SLB-003',
-    quantity: 1,
+    itemsLabel: '3 pomades',
   },
   {
     id: 'PKG-004',
     slug: 'self_love_plus_b2gof',
     name: 'Self Love Plus B2GOF',
-    price: 66750,
+    price: 55950,
     originalPrice: 133500,
     discount: 50,
     items: '3 x 500ml Heritage Shampoos + 3 x 150ml Growth Pomades + 3 x 500ml Voluminous Conditioners',
@@ -125,16 +87,34 @@ export const PACKAGES: Package[] = [
     freeItems: 'Buy 2 sets of shampoo, pomade and conditioner, get 1 set free',
     isPopular: true,
     deliveryFee: 3000,
-    label: 'Best Seller · Best Value · Recommended',
+    label: 'BEST DEAL',
     sku: 'SLPB-004',
     quantity: 1,
+    displayName: 'Self Love Plus B2GOF',
+    highlight: true,
+    offerBullets: [
+      'Buy 2 Shampoos → Get 1 FREE',
+      'Buy 2 Pomades → Get 1 FREE',
+      'Buy 2 Conditioners → Get 1 FREE',
+    ],
+    badges: [
+      { text: 'Best deal', tone: 'accent' },
+      { text: 'Save ₦26,400', tone: 'success' },
+    ],
+    referencePrice: 82350,
+    valueBreakdown: [
+      { label: '2 complete sets', amount: 54900 },
+      { label: 'Add just', amount: 1050 },
+      { label: 'Get 3rd complete set FREE — Worth', amount: 27450, strong: true },
+    ],
+    tagline: 'FREE DELIVERY TODAY ONLY',
   },
   {
     id: 'PKG-005',
     slug: 'family_saves',
     name: 'Family Saves',
-    price: 215750,
-    originalPrice: 431500,
+    price: 180800,
+    originalPrice: 361600,
     discount: 50,
     items: '10 x 500ml Heritage Shampoos + 10 x 150ml Growth Pomades + 10 x 500ml Voluminous Conditioners',
     supply: '12 Month Supply',
@@ -144,5 +124,6 @@ export const PACKAGES: Package[] = [
     label: '',
     sku: 'FAM-005',
     quantity: 1,
+    itemsLabel: '10 shampoos, 10 pomades, 10 conditioners',
   },
 ];

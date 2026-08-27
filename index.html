@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="preload" as="image" href="/assets/newhero-665.webp" type="image/webp" media="(max-width: 767px)" fetchpriority="high" />
+    <link rel="preload" as="image" href="/assets/newhero-665.webp" type="image/webp" fetchpriority="high" />
     <link rel="preload" as="image" href="/assets/newhero.webp" type="image/webp" media="(min-width: 768px)" fetchpriority="high" />
     <title>Trusted by Thousands of Women Who Successfully Regrew Their Hair Edges with FULANI HAIR GRO | #1 Hair Growth Solution in Nigeria | Est. 1625</title>
     <meta name="description" content="Trusted by thousands of women who successfully regrew their hair edges with FULANI HAIR GRO. Nigeria's #1 rated hair growth system delivers real results. 400-year-old Fulani secret. 100,000+ satisfied customers. Pay on Delivery available." />
@@ -26,7 +26,6 @@
     <link rel="apple-touch-icon" href="/assets/favicon.webp" />
 
     <link rel="preload" href="/fonts/montserrat-400-normal.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/cinzel-600-normal.woff2" as="font" type="font/woff2" crossorigin />
 
     <!-- Critical above-the-fold CSS (urgency banner + hero) -->
     <style>
@@ -174,15 +173,13 @@
       @media(min-width:1024px){.lg\:text-6xl{font-size:3.75rem}}
     </style>
 
-    <link rel="preconnect" href="https://k6-e4e4123be8e54363900a90353991ca93.ecs.us-west-1.on.aws" crossorigin>
-    <link rel="dns-prefetch" href="https://k6-e4e4123be8e54363900a90353991ca93.ecs.us-west-1.on.aws">
-    <link rel="preconnect" href="https://analytics.tiktok.com" crossorigin>
     <link rel="dns-prefetch" href="https://analytics.tiktok.com">
 
     <link rel="preload" href="/responsive-fix.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="/responsive-fix.css"></noscript>
 
-  </head>
+  
+</head>
 
   <body>
     <div id="root"></div>
@@ -195,6 +192,20 @@
       }(window, document, 'ttq');
     </script>
 
-    <script src="/analytics-deferred.js" defer></script>
+    <script>
+      (function () {
+        function loadAnalytics() {
+          var s = document.createElement('script');
+          s.src = '/analytics-deferred.js';
+          s.async = true;
+          document.body.appendChild(s);
+        }
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', loadAnalytics);
+        } else {
+          loadAnalytics();
+        }
+      })();
+    </script>
   </body>
 </html>
