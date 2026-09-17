@@ -23,7 +23,7 @@ const giftItems = [
     sub: '5g',
     text: 'Soothe itching and fight flakes before they build up.',
     icon: Sparkles,
-    image: `${BASE_PATH}assets/sample-itchnomore.png`,
+    image: `${BASE_PATH}assets/sample-itchnomore.webp`,
   },
   {
     number: '02',
@@ -31,7 +31,7 @@ const giftItems = [
     sub: '1',
     text: 'Protect your strands while you sleep.',
     icon: Moon,
-    image: `${BASE_PATH}assets/bonnet.jpg`,
+    image: `${BASE_PATH}assets/bonnet.webp`,
   },
   {
     number: '03',
@@ -47,7 +47,7 @@ const giftItems = [
     sub: '',
     text: 'The 7 Major Things I Did to Grow My Hair 22 Inches + How You Can Too!\nBy H. Nasir — The Fulani Hair Gro',
     icon: BookOpen,
-    image: `${BASE_PATH}assets/book.png`,
+    image: `${BASE_PATH}assets/book.webp`,
   },
   {
     number: '05',
@@ -55,7 +55,7 @@ const giftItems = [
     sub: '',
     text: 'A simple daily routine you can stick to.',
     icon: BookText,
-    image: `${BASE_PATH}assets/book2.png`,
+    image: `${BASE_PATH}assets/book2.webp`,
   },
   {
     number: '06',
@@ -63,7 +63,7 @@ const giftItems = [
     sub: '',
     text: 'Direct help while you use your products.',
     icon: MessageCircle,
-    image: `${BASE_PATH}assets/book3.png`,
+    image: `${BASE_PATH}assets/book3.webp`,
   },
   {
     number: '07',
@@ -71,7 +71,7 @@ const giftItems = [
     sub: '',
     text: 'Try it risk-free for 30 full days.',
     icon: ShieldCheck,
-    image: `${BASE_PATH}assets/book4.png`,
+    image: `${BASE_PATH}assets/book4.webp`,
   },
 ];
 
@@ -91,14 +91,17 @@ function GiftImage({ src, Icon }: { src: string; Icon: typeof Sparkles }) {
       <img
         src={src}
         alt=""
-        className="absolute inset-0 w-full h-full object-contain p-2 hidden gift-img"
+        loading="lazy"
+        decoding="async"
+        className="absolute inset-0 w-full h-full object-contain p-2 gift-img"
+        style={{ opacity: 0, transition: 'opacity 0.3s ease' }}
         onError={(e) => {
-          (e.currentTarget as HTMLImageElement).style.display = 'none';
+          (e.currentTarget as HTMLImageElement).style.opacity = '0';
           const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
           if (fallback) fallback.style.display = 'flex';
         }}
         onLoad={(e) => {
-          (e.currentTarget as HTMLImageElement).classList.remove('hidden');
+          (e.currentTarget as HTMLImageElement).style.opacity = '1';
           const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
           if (fallback) fallback.style.display = 'none';
         }}
