@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useMemo, useRef, CSSProperties, memo 
 import { getCheckoutAttemptId, clearCheckoutAttemptId } from '@/utils/orderId';
 import { fireTikTokLeadSync, fireTikTokInitiateCheckout } from '@/utils/tiktokTracking';
 import { meta } from '@/utils/metaTracking';
-import { PHONE_DISPLAY, WEBHOOK_URL } from '@/config/api';
+import { PHONE_DISPLAY } from '@/config/api';
 import { BundleCard, BundlePackage } from "./BundleDropdown";
 
 const BASE_PATH = import.meta.env.BASE_URL || '/';
@@ -148,28 +148,6 @@ const S: { [key: string]: CSSProperties } = {
   tot: { display: 'flex', justifyContent: 'space-between', fontSize: 16, fontWeight: 800, borderTop: '1px solid #E0E0E0', paddingTop: 12, marginTop: 8 },
   suc: { textAlign: 'center' as const, padding: '40px 20px' },
   sucIcon: { width: 60, height: 60, background: '#36CA37', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, color: '#fff', margin: '0 auto 20px' },
-};
-
-const postOrderToFulani = (bodyString: string) => {
-  try {
-    if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
-      const blob = new Blob([bodyString], { type: 'application/x-www-form-urlencoded;charset=UTF-8' });
-      const ok = navigator.sendBeacon(WEBHOOK_URL, blob);
-      if (ok) return;
-    }
-  } catch {
-    // ignore
-  }
-
-  fetch(WEBHOOK_URL, {
-    method: 'POST',
-    mode: 'no-cors',
-    keepalive: true,
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-    body: bodyString
-  }).catch((error) => {
-    console.error('postOrderToFulani fallback fetch failed:', error);
-  });
 };
 
 function OrderFormEmbed() {
