@@ -94,21 +94,15 @@ function GiftImage({ src, Icon }: { src: string; Icon: typeof Sparkles }) {
         loading="lazy"
         decoding="async"
         className="absolute inset-0 w-full h-full object-contain p-2 gift-img"
-        style={{ opacity: 0, transition: 'opacity 0.3s ease' }}
         onError={(e) => {
-          (e.currentTarget as HTMLImageElement).style.opacity = '0';
+          (e.currentTarget as HTMLImageElement).style.display = 'none';
           const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
           if (fallback) fallback.style.display = 'flex';
         }}
-        onLoad={(e) => {
-          (e.currentTarget as HTMLImageElement).style.opacity = '1';
-          const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
-          if (fallback) fallback.style.display = 'none';
-        }}
       />
       <span
-        className="w-full h-full flex items-center justify-center gift-fallback"
-        style={{ color: green }}
+        className="w-full h-full items-center justify-center gift-fallback"
+        style={{ color: green, display: 'none' }}
       >
         <Icon className="w-20 h-20 md:w-24 md:h-24" strokeWidth={1.5} />
       </span>
