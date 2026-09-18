@@ -3,7 +3,7 @@ import { usePrefetch } from '@/hooks/usePrefetch';
 import { useAfterHeroLoad } from '@/hooks/useIdleLoad';
 import LiteYouTubeEmbed from 'react-lite-youtube-embed';
 import 'react-lite-youtube-embed/dist/LiteYouTubeEmbed.css';
-import {
+import 
   Dialog,
   DialogContent,
   DialogHeader,
@@ -33,7 +33,7 @@ const BundleSelector = lazy(() =>
   import('./BundleSelector').then((m) => ({ default: m.BundleSelector }))
 );
 import { PreFormStockWarning } from './PreFormStockWarning';
-import FreeGiftsSection from './FreeGiftsSection';
+const FreeGiftsSection = lazy(() => import('./FreeGiftsSection'));
 
 export const TopStoryBanner = () => {
   const thankYouPrefetch = usePrefetch(() => import('@/pages/ThankYou'));
@@ -133,7 +133,11 @@ export const TopStoryBanner = () => {
           </span>
         </div>
 
-        <FreeGiftsSection />
+        <Suspense fallback={<div className="w-full py-12" style={{ backgroundColor: '#0f3d2e' }} />}>
+          <FreeGiftsSection />
+        </Suspense>
+          <FreeGiftsSection />
+        </Suspense>
 
         <div className="mt-6 max-w-3xl mx-auto text-center space-y-4">
           <h2 className="font-black text-2xl md:text-4xl text-black tracking-tight leading-tight">
