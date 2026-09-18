@@ -3,7 +3,7 @@ import { usePrefetch } from '@/hooks/usePrefetch';
 import { useAfterHeroLoad } from '@/hooks/useIdleLoad';
 import LiteYouTubeEmbed from 'react-lite-youtube-embed';
 import 'react-lite-youtube-embed/dist/LiteYouTubeEmbed.css';
-import 
+import {
   Dialog,
   DialogContent,
   DialogHeader,
