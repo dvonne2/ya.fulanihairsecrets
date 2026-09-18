@@ -136,8 +136,6 @@ export const TopStoryBanner = () => {
         <Suspense fallback={<div className="w-full py-12" style={{ backgroundColor: '#0f3d2e' }} />}>
           <FreeGiftsSection />
         </Suspense>
-          <FreeGiftsSection />
-        </Suspense>
 
         <div className="mt-6 max-w-3xl mx-auto text-center space-y-4">
           <h2 className="font-black text-2xl md:text-4xl text-black tracking-tight leading-tight">
