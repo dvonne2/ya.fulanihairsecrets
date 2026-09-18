@@ -1,7 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { google } from 'googleapis';
 
-const SHEET_RANGE = 'Orders!A:O';
+const SHEET_TAB = process.env.SHEET_TAB_NAME || 'YA Orders';
+const SHEET_RANGE = `${SHEET_TAB}!A:O`;
 
 function getAuth() {
   const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
@@ -39,7 +40,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const row = rows[i];
       if (row && row[1] === orderId) {
         matches.push({
-          row: `Orders!A${i + 1}:O${i + 1}`,
+          row: `${SHEET_TAB}!A${i + 1}:O${i + 1}`,
           index: i + 1,
           values: {
             timestamp: row[0] || '',
